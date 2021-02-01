@@ -1,0 +1,186 @@
+﻿<Window x:Class="ShellyAdmin.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ShellyAdmin"
+        xmlns:pofwpf="clr-namespace:POF.WPF;assembly=POF.WPF"
+        mc:Ignorable="d"
+        WindowState="Maximized"
+        Title="Shelly Administration Console">
+    <Window.DataContext>
+        <local:MainViewModel />
+    </Window.DataContext>
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/ShellyAdmin;component/TreeViewStretch.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <pofwpf:NotNullToVisibilityConverter x:Key="NotNullIsVisible" />
+            <pofwpf:RoundConverter x:Key="Round" />
+
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock FontSize="15" FontWeight="ExtraBold" VerticalAlignment="Center">
+                <TextBlock Text="Found"></TextBlock>
+                <TextBlock Text="{Binding FoundShellies.Length}"></TextBlock>
+                <TextBlock Text="Shellies"></TextBlock>
+            </TextBlock>
+            <Button Grid.Column="1" Click="Refresh_Click">
+                <Viewbox Width="24" Height="24">
+                    <Canvas Width="24" Height="24">
+                        <Path Fill="Black" Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                    </Canvas>
+                </Viewbox>
+            </Button>
+        </Grid>
+
+        <TreeView Grid.Row="1" ItemsSource="{Binding FoundShellies}"
+                  HorizontalContentAlignment="Stretch" ItemContainerStyle="{StaticResource ExpandedStretchTreeViewItemStyle}"
+                  >
+            <!--<TreeView.ItemContainerStyle>
+                <Style TargetType="{x:Type TreeViewItem}">
+                    <Setter Property="IsExpanded" Value="True"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Background" Value="Gray"/>
+                </Style>
+            </TreeView.ItemContainerStyle>-->
+            <TreeView.Resources>
+                <ResourceDictionary>
+                    <HierarchicalDataTemplate DataType="{x:Type local:FoundShellyInfo}"
+                                              ItemsSource="{Binding Info.Components}">
+                        <Grid Margin="5, 2">
+                            <Grid Visibility="{Binding Info, Converter={StaticResource NotNullIsVisible}}"
+                              >
+                                <Grid.RowDefinitions>
+                                    <RowDefinition />
+                                    <RowDefinition />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="{Binding Info.Model}" />
+                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" Text="{Binding Info.Version}" />
+                                <TextBlock Grid.Row="1" Grid.ColumnSpan="2">
+                                <Hyperlink NavigateUri="{Binding Info.HostUri}" RequestNavigate="Host_RequestNavigate">
+                                    <TextBlock Text="{Binding Info.Name}" FontSize="15" FontWeight="Bold" />
+                                </Hyperlink>
+                            </TextBlock>
+                            </Grid>
+                            <Border Visibility="{Binding ErrorDetails, Converter={StaticResource NotNullIsVisible}}"
+                                    BorderBrush="Red"
+                                >
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="{Binding ErrorDetails.StatusCode}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding ErrorDetails.ReasonPhrase}" />
+                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding ErrorDetails.ErrorMessage}" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </HierarchicalDataTemplate>
+
+                    <DataTemplate DataType="{x:Type local:ShellySwitch}">
+                        <Grid Margin="5, 2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                                <RowDefinition />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="{Binding HAPSvcType}" />
+                            <TextBlock Grid.Column="1" HorizontalAlignment="Right">
+                                <TextBlock Text="{Binding APower, Converter={StaticResource Round}}" />
+                                <TextBlock Text="W" />
+
+                                <TextBlock Margin="2, 0, 0, 0" Text="{Binding AEnergy, Converter={StaticResource Round}}" />
+                                <TextBlock Text="Wh" />
+                            </TextBlock>
+                            <TextBlock Grid.Row="1" Text="{Binding Name}" FontWeight="Bold" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding StateStr}" FontWeight="Bold" HorizontalAlignment="Right" />
+                        </Grid>
+                    </DataTemplate>
+
+                    <DataTemplate DataType="{x:Type local:ShellyProgramableInput}">
+                        <Grid Margin="5, 2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                                <RowDefinition />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="{Binding HAPType}" />
+                            <TextBlock Grid.Row="1" Text="{Binding Name}" FontWeight="Bold" />
+                        </Grid>
+                    </DataTemplate>
+
+                    <DataTemplate DataType="{x:Type local:ShellyDisabledInput}">
+                        <TextBlock Margin="5, 2" Text="{Binding HAPType}" Background="LightGray" />
+                    </DataTemplate>
+
+                    <!--<DataTemplate DataType="{x:Type local:ShellyComponent}">
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>-->
+                </ResourceDictionary>
+            </TreeView.Resources>
+        </TreeView>
+
+        <Grid Grid.Column="1" Grid.RowSpan="2"
+              Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.ColumnSpan="2" Text="Total Power Consumption" HorizontalAlignment="Center" FontSize="15" />
+            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" HorizontalAlignment="Center">
+                <TextBlock Text="Power" />
+                <TextBlock Text="{Binding TotalPower, Converter={StaticResource Round}}" />
+                <TextBlock Text="W" />
+            </TextBlock>
+            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" HorizontalAlignment="Center">
+                <TextBlock Text="Accumulated"></TextBlock>
+                <TextBlock Text="{Binding TotalEnergy, Converter={StaticResource Round}}" />
+                <TextBlock Text="Wh" />
+            </TextBlock>
+        </Grid>
+    </Grid>
+</Window>
