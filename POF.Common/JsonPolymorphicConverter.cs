@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace ShellyAdmin
+namespace POF.Common
 {
     public abstract class PolymorphicConverter<T, TDiscriminator> : JsonConverter<T>
         where T: class

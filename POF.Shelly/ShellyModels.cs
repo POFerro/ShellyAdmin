@@ -1,14 +1,17 @@
-﻿using POF.WPF;
+﻿using POF.Common;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 
-namespace ShellyAdmin
+namespace POF.Shelly
 {
     public enum SysMode : short
     {
@@ -123,10 +126,36 @@ namespace ShellyAdmin
 
         [JsonPropertyName("name")]
         public string Name { get; set; }
+
+        protected static readonly HttpClient http = new();
+
+        // For serialization
+        protected ShellyComponent()
+        {
+        }
+
+        public ShellyComponent(ShellyInfo parent)
+        {
+            this.SetParent(parent);
+        }
+        public ShellyInfo Parent { get; private set; }
+        internal void SetParent(ShellyInfo parent)
+        {
+            this.Parent = parent;
+        }
     }
 
     public class ShellySwitch : ShellyComponent
     {
+        protected ShellySwitch()
+        {
+        }
+
+        public ShellySwitch(ShellyInfo parent)
+            : base(parent)
+        {
+        }
+
         [JsonPropertyName("svc_type")]
         public HAPSvcType HAPSvcType { get; set; }
 
@@ -134,15 +163,52 @@ namespace ShellyAdmin
         public bool State
         {
             get { return _state; }
-            set { SetProperty(ref _state, value); OnPropertyChanged(nameof(this.StateStr)); }
+            set
+            {
+                SetProperty(ref _state, value);
+                SetProperty(ref switchState, value);
+                OnPropertyChanged(nameof(this.SwitchState));
+                OnPropertyChanged(nameof(this.StateStr));
+            }
         }
         private bool _state;
 
-        public string StateStr => this.State switch
+        [JsonIgnore()]
+        public bool SwitchState
         {
-            true => "Ligado",
-            false => "Desligado"
-        };
+            get { return switchState; }
+            set
+            {
+                if (value != this.State)
+                {
+                    SaveState(value)
+                        .ContinueWith((t, state) =>
+                        {
+                            this.State = (bool)state; // Altera o switchState tb
+                        },
+                            value, TaskScheduler.Current
+                        );
+                }
+            }
+        }
+        private bool switchState;
+
+        public string StateStr => this.StateStringFormatter(this.State);
+
+        public Func<bool, string> StateStringFormatter
+        {
+            get { return _stateStringFormatter; }
+            set
+            {
+                SetProperty(ref _stateStringFormatter, value);
+                OnPropertyChanged(nameof(StateStr));
+            }
+        }
+        private Func<bool, string> _stateStringFormatter = (state) => state switch
+                   {
+                       true => "Ligado",
+                       false => "Desligado"
+                   };
 
 
         [JsonPropertyName("in_mode")]
@@ -175,7 +241,18 @@ namespace ShellyAdmin
             set { SetProperty(ref _aEnergy, value); }
         }
         private decimal? _aEnergy;
+
+
+        protected virtual async Task SaveState(bool value)
+        {
+            var apiAddress = new Uri(new Uri("http://" + this.Parent.IPAddress),
+                $"rpc/Shelly.SetState?id={this.Id}&type={(short)this.HAPType}&state=%7b%22state%22%3a{JsonSerializer.Serialize(value)}%7d");
+
+            var response = await http.GetAsync(apiAddress);
+        }
+        //http
     }
+
 
     public class ShellyProgramableInput : ShellyComponent
     {
@@ -308,8 +385,18 @@ namespace ShellyAdmin
         public string Model { get; set; }
         [JsonPropertyName("stock_model")]
         public string StockModel { get; set; }
+
         [JsonPropertyName("host")]
-        public string Host { get; set; }
+        public string Host
+        {
+            get { return _host; }
+            set
+            {
+                SetProperty(ref _host, value);
+                OnPropertyChanged(nameof(HostUri));
+            }
+        }
+        private string _host;
 
         public Uri HostUri => this.Host != null ? new Uri("http://" + this.Host) : null;
 
@@ -368,32 +455,88 @@ namespace ShellyAdmin
         public bool OverheatOn { get; set; }
 
         [JsonPropertyName("components")]
-        public ShellyComponent[] Components { get; set; }
+        public List<ShellyComponent> Components
+        {
+            get { return _components; }
+            set { SetProperty(ref _components, value); }
+        }
+        private List<ShellyComponent> _components = new List<ShellyComponent>();
 
-        public async Task RefreshInfo(HttpClient http)
+        [JsonIgnore()]
+        public HttpErrorDetails ReadInfoError
+        {
+            get { return _readInfoEror; }
+            private set { SetProperty(ref _readInfoEror, value); }
+        }
+        private HttpErrorDetails _readInfoEror;
+
+        protected static readonly HttpClient http = new();
+        public ShellyInfo()
+        {
+        }
+
+        public async Task RefreshInfo()
         {
             var response = await http.GetAsync(new Uri($"http://{this.IPAddress}/rpc/Shelly.GetInfo"));
             if (response.IsSuccessStatusCode)
             {
+                this.ReadInfoError = null;
+
                 var newInfo = JsonSerializer.Deserialize<ShellyInfo>(await response.Content.ReadAsStringAsync());
 
-                foreach (var prop in this.GetType().GetProperties()
-                                                   .Where(p => p.CanRead && p.CanWrite)
-                                                   .Where(p => p.Name != nameof(Components)))
-                {
-                    prop.SetValue(this, prop.GetValue(newInfo));
-                }
+                CopyFrom(newInfo);
+            }
+            else
+            {
+                ReadInfoError = !response.IsSuccessStatusCode ? new HttpErrorDetails { StatusCode = response.StatusCode, ReasonPhrase = response.ReasonPhrase, ErrorMessage = await response.Content.ReadAsStringAsync() }
+                                                              : null;
+            }
+        }
 
+        public void CopyFrom(ShellyInfo newInfo)
+        {
+            foreach (var prop in this.GetType().GetProperties()
+                                               .Where(p => p.CanRead && p.CanWrite)
+                                               .Where(p => p.Name != nameof(Components)))
+            {
+                prop.SetValue(this, prop.GetValue(newInfo));
+            }
+
+            foreach (var comp in newInfo.Components)
+            {
+                comp.SetParent(this);
+            }
+
+            var removedComponents = this.Components
+                .Where(existing => !newInfo.Components
+                                           .Any(newComp => existing.Id == newComp.Id && existing.HAPType == newComp.HAPType)
+                      )
+                .ToList();
+            if (removedComponents.Count > 0)
+            {
+                this.Components = this.Components.Except(removedComponents).ToList();
+            }
+
+            if (this.Components.Count == 0)
+            {
+                this.Components = newInfo.Components;
+            }
+            else
+            {
                 var components = newInfo.Components
-                    .Join(this.Components, c => new { c.Id, c.HAPType }, c => new { c.Id, c.HAPType }, (newInfo, oldInfo) => new { newInfo, oldInfo });
-
-                foreach (var compo in components)
+                    .GroupJoin(this.Components, c => new { c.Id, c.HAPType }, c => new { c.Id, c.HAPType }, (newInfo, oldInfo) => new { newInfo, oldInfo = oldInfo.FirstOrDefault() })
+                    .ToList();
+                foreach (var compo in components.Where(c => c.oldInfo != null))
                 {
                     foreach (var prop in compo.oldInfo.GetType().GetProperties()
-                                                      .Where(p => p.CanRead && p.CanWrite))
+                                                        .Where(p => p.CanRead && p.CanWrite))
                     {
                         prop.SetValue(compo.oldInfo, prop.GetValue(compo.newInfo));
                     }
+                }
+                if (components.Any(c => c.oldInfo == null))
+                {
+                    this.Components = this.Components.Concat(components.Where(c => c.oldInfo == null).Select(c => c.newInfo)).ToList();
                 }
             }
         }

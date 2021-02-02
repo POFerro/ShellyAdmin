@@ -30,7 +30,7 @@ namespace ShellyAdmin
 
         private void Refresh_Click(object sender, RoutedEventArgs e)
         {
-            this.ViewModel.ScheduleShelliesRefresh();
+            this.ViewModel.ShellyManager.ScheduleShelliesRefresh();
 
         }
 

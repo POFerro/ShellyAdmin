@@ -11,6 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\POF.Common\POF.Common.csproj" />
+    <ProjectReference Include="..\POF.Shelly\POF.Shelly.csproj" />
     <ProjectReference Include="..\POF.WPF\POF.WPF.csproj" />
   </ItemGroup>
 
