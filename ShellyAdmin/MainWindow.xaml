@@ -150,6 +150,14 @@
 
                             <TextBlock Text="{Binding HAPType}" />
                             <TextBlock Grid.Row="1" Text="{Binding Name}" FontWeight="Bold" />
+
+                            <ToggleButton Grid.RowSpan="2" Grid.Column="2" Width="36" Height="36"
+                                          IsChecked="{Binding SwitchState}"
+                                          Foreground="Blue" Style="{StaticResource PowerButtonStyle}"
+                                          HorizontalAlignment="Right"
+                                          ToolTip="{Binding StateStr}"
+                                          >
+                            </ToggleButton>
                         </Grid>
                     </DataTemplate>
 
