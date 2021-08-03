@@ -87,6 +87,14 @@ namespace POF.Shelly
         protected async Task RefreshShellies()
         {
             Trace.WriteLine("Refreshing found shellies with mDNS");
+
+            //ILookup<string, string> domains = await ZeroconfResolver.BrowseDomainsAsync();
+            //Trace.WriteLine($"Found domains: \r\n{string.Join("\r\n", domains.Select(d => d.Key + "->" + string.Join(";", d)))}");
+
+            //var responses = await ZeroconfResolver.ResolveAsync(domains.Select(g => g.Key));
+            //foreach (var resp in responses)
+            //    Console.WriteLine(resp);
+
             var responses = await ZeroconfResolver.ResolveAsync("_hap._tcp.local.");
             var shelies = responses
                 .Where(host => host.Services["_hap._tcp.local."].Properties
