@@ -96,6 +96,8 @@ namespace POF.Shelly
             //    Console.WriteLine(resp);
 
             var responses = await ZeroconfResolver.ResolveAsync("_hap._tcp.local.");
+            Trace.WriteLine($"Found {responses.Count} devices for _hap.tcp.local.");
+
             var shelies = responses
                 .Where(host => host.Services["_hap._tcp.local."].Properties
                                    .Any(pSet => pSet.TryGetValue("md", out string mdValue) &&
@@ -103,6 +105,7 @@ namespace POF.Shelly
                                        )
                        )
                 .ToList();
+            Trace.WriteLine($"Found {shelies.Count} shelly devices");
 
             var newShelies = shelies
                     .Where(newShelly => !this.FoundShellies.Any(existing => existing.IPAddress == newShelly.IPAddress))
