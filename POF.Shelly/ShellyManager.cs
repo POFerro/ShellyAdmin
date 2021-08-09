@@ -28,6 +28,8 @@ namespace POF.Shelly
         private Timer refreshTimer;
         private bool autoRefresh;
 
+        protected static readonly HttpClient http = new();
+
         public ShellyManager(bool autoRefresh)
         {
             this.autoRefresh = autoRefresh;
@@ -78,7 +80,53 @@ namespace POF.Shelly
 
             await Task.WhenAll(this.FoundShellies.Select(shelly => shelly.RefreshInfo()));
 
+            await CheckForUpdates();
+
             this.ShelliesRefreshed?.Invoke(this, new ShelliesRefreshedEvent { FoundShellies = this.FoundShellies });
+        }
+
+        public class VersionInformation
+        {
+            [JsonPropertyName("version")]
+            public string VersionStr { get => this.Version.ToString(); set => this.Version = Version.Parse(value); }
+
+            [JsonIgnore()]
+            public Version Version { get; set; }
+            [JsonPropertyName("rel_notes")]
+            public string ReleaseNotesUrl { get; set; }
+
+            [JsonPropertyName("urls")]
+            public JsonElement Urls { get; set; }
+        }
+
+        public async Task CheckForUpdates()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, new Uri($"https://rojer.me/files/shelly/update.json"));
+            //request.Headers.Add("X-Current-Build", this.FWBuild);
+            //request.Headers.Add("X-Current-Version", this.Version);
+            //request.Headers.Add("X-Device-ID", this.DeviceId);
+            //request.Headers.Add("X-Model", this.Model);
+
+            var response = await http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var updateStr = await response.Content.ReadAsStringAsync();
+                var resp = JsonDocument.Parse(updateStr);
+
+
+                var versionObj = resp.RootElement.EnumerateArray().Select(b => JsonSerializer.Deserialize<VersionInformation>(b[1].ToString())).OrderByDescending(v => v.Version).First();
+                var version = versionObj.Version;
+
+                    //var re = new Regex(resp.RootElement[i.Name][0]);
+                    //if (curVersion.match(re))
+                    //{
+                    //    cfg = resp[i][1];
+                    //    break;
+                    //}
+            }
+            else
+            {
+            }
         }
 
         public void ScheduleShelliesRefresh()
@@ -137,7 +185,7 @@ namespace POF.Shelly
         {
             this.refreshTimer.Dispose();
 
-            if (refreshTask.Status == TaskStatus.Running)
+            if (!new[] { TaskStatus.RanToCompletion, TaskStatus.Faulted, TaskStatus.Canceled }.Contains(refreshTask.Status))
                 refreshTask.Wait();
             else 
                 refreshTask.Dispose();

@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Web;
 using System.Collections.Specialized;
+using System.Text.RegularExpressions;
 
 namespace POF.Shelly
 {
@@ -588,6 +589,35 @@ namespace POF.Shelly
             {
                 ReadInfoError = !response.IsSuccessStatusCode ? new HttpErrorDetails { StatusCode = response.StatusCode, ReasonPhrase = response.ReasonPhrase, ErrorMessage = await response.Content.ReadAsStringAsync() }
                                                               : null;
+            }
+        }
+
+        public async Task CheckForUpdates()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, new Uri($"https://rojer.me/files/shelly/update.json"));
+            request.Headers.Add("X-Current-Build", this.FWBuild);
+            request.Headers.Add("X-Current-Version", this.Version);
+            request.Headers.Add("X-Device-ID", this.DeviceId);
+            request.Headers.Add("X-Model", this.Model);
+
+            var response = await http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var updateStr = await response.Content.ReadAsStringAsync();
+                var resp = JsonDocument.Parse(updateStr);
+
+                //foreach (var i in resp.RootElement.EnumerateObject())
+                //{
+                //    var re = new Regex(resp.RootElement[i.Name][0]);
+                //    if (curVersion.match(re))
+                //    {
+                //        cfg = resp[i][1];
+                //        break;
+                //    }
+                //}
+            }
+            else
+            {
             }
         }
 
