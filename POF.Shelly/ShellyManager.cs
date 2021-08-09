@@ -47,10 +47,24 @@ namespace POF.Shelly
         }
 
         private Task refreshTask = Task.CompletedTask;
+        private bool running = false;
+        private object runningLock = new object();
         private void RefreshShelliesTimerCallback(object state)
         {
-            if (this.refreshTask.IsCompleted)
+            lock (this.runningLock)
+            {
+                if (this.running)
+                    return;
+                this.running = true;
+            }
+            try
+            {
                 this.refreshTask = this.RefreshShelliesData();
+            }
+            finally
+            {
+                this.running = false;
+            }
         }
 
         private bool shouldRefreshShellies = true;
@@ -123,7 +137,10 @@ namespace POF.Shelly
         {
             this.refreshTimer.Dispose();
 
-            refreshTask.Wait();
+            if (refreshTask.Status == TaskStatus.Running)
+                refreshTask.Wait();
+            else 
+                refreshTask.Dispose();
         }
     }
 }
