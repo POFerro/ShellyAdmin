@@ -665,22 +665,27 @@ namespace POF.Shelly
                 var url = this.AvailableVersion.Urls.GetProperty(this.Model).GetString();
                 using (var updateBlobResp = await http.GetAsync(url))
                 {
+                    Trace.WriteLine($"Updating shelly: {this.Host} to version: {this.AvailableVersion.Version}");
                     if (!updateBlobResp.IsSuccessStatusCode)
                         this.ReadInfoError = new HttpErrorDetails() { StatusCode = updateBlobResp.StatusCode, ReasonPhrase = updateBlobResp.ReasonPhrase, ErrorMessage = await updateBlobResp.Content.ReadAsStringAsync() };
 
                     if (updateBlobResp.Content.Headers.ContentType?.MediaType != MediaTypeNames.Application.Zip)
                         this.ReadInfoError = new HttpErrorDetails() { StatusCode = System.Net.HttpStatusCode.UnsupportedMediaType, ErrorMessage = "Got wrong content-type from update, can't update. Try manually." };
 
-                    var updateBlob = await updateBlobResp.Content.ReadAsByteArrayAsync();
+                    var fileBlob = await updateBlobResp.Content.ReadAsByteArrayAsync();
 
+                    var request = new HttpRequestMessage(HttpMethod.Post, $"http://{this.IPAddress}/update");
                     var content = new MultipartFormDataContent();
-                    var fileContent = new ByteArrayContent(updateBlob);
+                    var fileContent = new ByteArrayContent(fileBlob);
+                    content.Add(fileContent, "file", "blob");
                     fileContent.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Zip);
-                    content.Add(fileContent, "file");
-                    var resp = await http.PostAsync($"http://{this.IPAddress}/update", content);
+                    request.Content = content;
+                    var resp = await http.SendAsync(request);
 
                     if (!resp.IsSuccessStatusCode)
                         this.ReadInfoError = new HttpErrorDetails() { StatusCode = updateBlobResp.StatusCode, ReasonPhrase = updateBlobResp.ReasonPhrase, ErrorMessage = await updateBlobResp.Content.ReadAsStringAsync() };
+                    else
+                        Trace.WriteLine($"Update of shelly: {this.Host} to version: {this.AvailableVersion.Version} finished successfully");
                 }
             }
         }
