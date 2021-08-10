@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Images\fire.png" />
+    <None Remove="Images\refresh.png" />
+    <None Remove="Images\update.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Zeroconf" Version="3.4.2" />
   </ItemGroup>
 
@@ -14,6 +20,12 @@
     <ProjectReference Include="..\POF.Common\POF.Common.csproj" />
     <ProjectReference Include="..\POF.Shelly\POF.Shelly.csproj" />
     <ProjectReference Include="..\POF.WPF\POF.WPF.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Images\fire.png" />
+    <Resource Include="Images\refresh.png" />
+    <Resource Include="Images\update.png" />
   </ItemGroup>
 
 </Project>

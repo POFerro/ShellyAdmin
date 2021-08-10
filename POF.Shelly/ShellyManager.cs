@@ -37,6 +37,8 @@ namespace POF.Shelly
                 this.refreshTimer = new Timer(this.RefreshShelliesTimerCallback, null, 0, 3000);
             else
                 this.refreshTimer = new Timer(this.RefreshShelliesTimerCallback);
+
+            Trace.WriteLine($"ShellyManager was created");
         }
 
         public event EventHandler<ShelliesRefreshedEvent> ShelliesRefreshed;
@@ -46,6 +48,20 @@ namespace POF.Shelly
         {
             get { return _foundShellies; }
             protected set { SetProperty(ref _foundShellies, value); }
+        }
+
+        public VersionInformation AvailableVersion
+        {
+            get { return _availableVersion; }
+            private set { SetProperty(ref _availableVersion, value); }
+        }
+        private VersionInformation _availableVersion;
+
+        private bool updatesAvailable;
+        public bool UpdatesAvailable
+        {
+            get { return updatesAvailable; }
+            private set { SetProperty(ref updatesAvailable, value); }
         }
 
         private Task refreshTask = Task.CompletedTask;
@@ -85,20 +101,6 @@ namespace POF.Shelly
             this.ShelliesRefreshed?.Invoke(this, new ShelliesRefreshedEvent { FoundShellies = this.FoundShellies });
         }
 
-        public class VersionInformation
-        {
-            [JsonPropertyName("version")]
-            public string VersionStr { get => this.Version.ToString(); set => this.Version = Version.Parse(value); }
-
-            [JsonIgnore()]
-            public Version Version { get; set; }
-            [JsonPropertyName("rel_notes")]
-            public string ReleaseNotesUrl { get; set; }
-
-            [JsonPropertyName("urls")]
-            public JsonElement Urls { get; set; }
-        }
-
         public async Task CheckForUpdates()
         {
             var request = new HttpRequestMessage(HttpMethod.Get, new Uri($"https://rojer.me/files/shelly/update.json"));
@@ -114,19 +116,26 @@ namespace POF.Shelly
                 var resp = JsonDocument.Parse(updateStr);
 
 
-                var versionObj = resp.RootElement.EnumerateArray().Select(b => JsonSerializer.Deserialize<VersionInformation>(b[1].ToString())).OrderByDescending(v => v.Version).First();
-                var version = versionObj.Version;
+                var versionInfo = resp.RootElement.EnumerateArray().OrderByDescending(v => Version.Parse(v[1].GetProperty("version").GetString())).Select(b => JsonSerializer.Deserialize<VersionInformation>(b[1].ToString())).First();
+                var version = versionInfo.Version;
 
-                    //var re = new Regex(resp.RootElement[i.Name][0]);
-                    //if (curVersion.match(re))
-                    //{
-                    //    cfg = resp[i][1];
-                    //    break;
-                    //}
+                foreach (var shelly in this.FoundShellies)
+                {
+                    shelly.CheckForUpdates(versionInfo);
+                }
+
+                this.AvailableVersion = versionInfo;
+                this.UpdatesAvailable = this.FoundShellies.Any(s => s.UpdateAvailable);
             }
             else
             {
+                Trace.WriteLine($"Error in check for updates: Status->" + response.StatusCode + ":" + response.ReasonPhrase);
             }
+        }
+
+        public async Task UpdateAll()
+        {
+            await Task.WhenAll(this.FoundShellies.Where(s => s.UpdateAvailable).Select(s => s.Update()));
         }
 
         public void ScheduleShelliesRefresh()
@@ -170,6 +179,11 @@ namespace POF.Shelly
             Trace.WriteLine($"Found {shelies.Count} shelly devices");
 
             var newShelies = shelies
+                    .Select(c => new { c.IPAddress, c.DisplayName })
+                    //.Append(new { IPAddress = "192.168.1.127", DisplayName = "SwitchMarquise" })
+                    //.Append(new { IPAddress = "192.168.1.123", DisplayName = "SwitchPortaGrande" })
+                    //.Append(new { IPAddress = "192.168.1.109", DisplayName = "SwitchCozinhaDuplo" })
+                    //.Append(new { IPAddress = "192.168.1.114", DisplayName = "SwitchCorredor" })
                     .Where(newShelly => !this.FoundShellies.Any(existing => existing.IPAddress == newShelly.IPAddress))
                     .Select(shelly => new ShellyInfo
                     {

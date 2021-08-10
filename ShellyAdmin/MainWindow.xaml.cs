@@ -26,6 +26,8 @@ namespace ShellyAdmin
         public MainWindow()
         {
             InitializeComponent();
+
+            this.DataContext = new MainViewModel();
         }
 
         private void Refresh_Click(object sender, RoutedEventArgs e)
@@ -39,6 +41,41 @@ namespace ShellyAdmin
             // for .NET Core you need to add UseShellExecute = true
             // see https://docs.microsoft.com/dotnet/api/system.diagnostics.processstartinfo.useshellexecute#property-value
             Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+            e.Handled = true;
+        }
+
+        private void ReleaseNotes_RequestNavigate(object sender, RequestNavigateEventArgs e)
+        {
+            // for .NET Core you need to add UseShellExecute = true
+            // see https://docs.microsoft.com/dotnet/api/system.diagnostics.processstartinfo.useshellexecute#property-value
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+            e.Handled = true;
+        }
+
+        private async void btnUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            var shelly = ((Button)e.Source).DataContext as POF.Shelly.ShellyInfo;
+            try
+            {
+                await shelly.Update();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error updating shelly: {shelly.Name}->{ex}");
+            }
+            e.Handled = true;
+        }
+
+        private async void UpdateAll_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await this.ViewModel.ShellyManager.UpdateAll();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error updating shellies->{ex}");
+            }
             e.Handled = true;
         }
 
