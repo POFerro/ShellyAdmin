@@ -104,10 +104,6 @@ namespace POF.Shelly
         public async Task CheckForUpdates()
         {
             var request = new HttpRequestMessage(HttpMethod.Get, new Uri($"https://rojer.me/files/shelly/update.json"));
-            //request.Headers.Add("X-Current-Build", this.FWBuild);
-            //request.Headers.Add("X-Current-Version", this.Version);
-            //request.Headers.Add("X-Device-ID", this.DeviceId);
-            //request.Headers.Add("X-Model", this.Model);
 
             var response = await http.SendAsync(request);
             if (response.IsSuccessStatusCode)
@@ -180,6 +176,10 @@ namespace POF.Shelly
 
             var newShelies = shelies
                     .Select(c => new { c.IPAddress, c.DisplayName })
+                    //.Append(new { IPAddress = "192.168.1.127", DisplayName = "SwitchMarquise" })
+                    //.Append(new { IPAddress = "192.168.1.123", DisplayName = "SwitchPortaGrande" })
+                    //.Append(new { IPAddress = "192.168.1.109", DisplayName = "SwitchCozinhaDuplo" })
+                    //.Append(new { IPAddress = "192.168.1.114", DisplayName = "SwitchCorredor" })
                     .Where(newShelly => !this.FoundShellies.Any(existing => existing.IPAddress == newShelly.IPAddress))
                     .Select(shelly => new ShellyInfo
                     {
