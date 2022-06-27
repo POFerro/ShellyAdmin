@@ -176,10 +176,6 @@ namespace POF.Shelly
 
             var newShelies = shelies
                     .Select(c => new { c.IPAddress, c.DisplayName })
-                    //.Append(new { IPAddress = "192.168.1.127", DisplayName = "SwitchMarquise" })
-                    //.Append(new { IPAddress = "192.168.1.123", DisplayName = "SwitchPortaGrande" })
-                    //.Append(new { IPAddress = "192.168.1.109", DisplayName = "SwitchCozinhaDuplo" })
-                    //.Append(new { IPAddress = "192.168.1.114", DisplayName = "SwitchCorredor" })
                     .Where(newShelly => !this.FoundShellies.Any(existing => existing.IPAddress == newShelly.IPAddress))
                     .Select(shelly => new ShellyInfo
                     {
