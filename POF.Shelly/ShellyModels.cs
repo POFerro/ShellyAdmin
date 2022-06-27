@@ -520,7 +520,7 @@ namespace POF.Shelly
         }
         private string _model;
 
-        [JsonPropertyName("stock_model")]
+        [JsonPropertyName("stock_fw_model")]
         public string StockModel { get; set; }
 
         [JsonPropertyName("host")]
@@ -564,9 +564,9 @@ namespace POF.Shelly
         public string WifiSSID { get; set; }
         [JsonPropertyName("wifi_pass")]
         public string WifiPass { get; set; }
-        [JsonPropertyName("wifi_rssi")]
+        [JsonPropertyName("wifi_conn_rssi")]
         public long WifiRSSI { get; set; }
-        [JsonPropertyName("wifi_ip")]
+        [JsonPropertyName("wifi_conn_ip")]
         public string IPAddress { get; set; }
         [JsonPropertyName("hap_cn")]
         public short HAPConnections { get; set; }

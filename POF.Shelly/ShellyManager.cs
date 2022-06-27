@@ -166,10 +166,10 @@ namespace POF.Shelly
             Trace.WriteLine($"Found {responses.Count} devices for _hap.tcp.local.");
 
             var shelies = responses
-                .Where(host => host.Services["_hap._tcp.local."].Properties
+                .Where(host => host.Services.FirstOrDefault(s => s.Value.Name == "_hap._tcp.local.").Value?.Properties
                                    .Any(pSet => pSet.TryGetValue("md", out string mdValue) &&
                                                 mdValue.StartsWith("shelly", StringComparison.OrdinalIgnoreCase)
-                                       )
+                                       ) == true
                        )
                 .ToList();
             Trace.WriteLine($"Found {shelies.Count} shelly devices");
